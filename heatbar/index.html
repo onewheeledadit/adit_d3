@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<h1>Demonstrating Each Order Position Hot Seats</h1>
+<frame>
+  <head>
+    <meta charset="utf-8">
+    <title>D3 Example</title>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/d3/3.5.5/d3.min.js"></script>
+
+    <style>
+      circle {
+        fill: none;
+        stroke-width: 2px;
+      }
+        
+        
+    div.tooltip {	
+    position: absolute;			
+    text-align: center;			
+    width: 160px;					
+    height: 60px;					
+    padding: 2px;				
+    font: 12px sans-serif;		
+    background: lightsteelblue;	
+    border: 0px;		
+    border-radius: 8px;			
+    pointer-events: none;		
+        
+        
+        
+}
+        
+        
+    text.mono {
+        font-size: 9pt;
+        font-family: Consolas, courier;
+        fill: #aaa;
+      }
+    </style>  
+
+  </head>
+  <body>
+    <script>
+
+      var margin = { top: 50, right: 0, bottom: 100, left: 30 },
+          width = 960 - margin.left - margin.right,
+          height = 1430 - margin.top - margin.bottom,
+          gridSize = Math.floor(width / 22),
+          legendElementWidth = gridSize*2;
+      var col = "col_pos";
+      var row = "rows";
+      var like = "like";
+      var match = "match";
+
+     
+      //var xScale = d3.scale.linear().range([0, outerWidth]);
+      //var yScale = d3.scale.linear().range([outerHeight, 0]);
+      //var rScale = d3.scale.linear().range([rMin, rMax]);
+      var colorScale = d3.scale.category10();
+        
+        
+      var stateWidth = 40; 
+      var gap = 2;
+      
+      var days = ["22","21","20","19", "18", "17", "16","15","14","13","12","11","10","9","8","7","6","5","4","3","2","1"];
+        
+         var times = ["W1", "W4", "W5", "W6", "W7", "W8", "W9",
+                     "W10", "W11", "W18","W21"]; 
+        
+        
+      var div = d3.select("body").append("div")	
+      .attr("class", "tooltip")				
+      .style("opacity", 0);
+  
+      var svg = d3.select("body").append("svg")
+          .attr("width", width + margin.left + margin.right)
+          .attr("height", height + margin.top + margin.bottom)
+          .append("g")
+          .attr("transform", "translate(" + margin.left + "," + margin.top + ")");
+
+
+      
+        
+      var dayLabels = svg.selectAll(".dayLabel")
+          .data(days)
+          .enter().append("text")
+            .text(function (d) { return d; })
+            .attr("x", 0)
+            .attr("y", function (d, i) { return i * gridSize; })
+            .style("text-anchor", "end")
+            .attr("transform", "translate(7," + gridSize / 1.5 + ")")
+           .attr("class","dayLabel mono");
+       
+     
+        var timeLabels = svg.selectAll(".timeLabel")
+          .data(times)
+          .enter().append("text")
+            .text(function(d) { return d; })
+            .attr("x", function(d, i) { return i * 1.5*gridSize; })
+            .attr("y",1000)
+            .style("text-anchor", "end")
+         .attr("transform", "translate(110, -70)")
+            .attr("class", "timeLabel mono");
+      
+       
+      
+      
+      
+      function render(data){
+
+        //Add a different color channel
+        var XScale = d3.scale.linear().domain([0,20]).range([0, 20 * (stateWidth + gap)]);
+        var YScale = d3.scale.linear().domain([10,0]).range([0, 10 * (stateWidth + gap)]); 
+        var colorScale = d3.scale.quantile().range(["fee0d2","fc9272","#a50026"]); 
+          
+        
+        colorScale.domain(d3.extent(data, function (d){ return d[like]; }))
+          
+        var blocks_g = svg.append("g").attr("transform", "translate(50, 500)");
+        
+        var blockGroup = blocks_g.selectAll("g").data(data)
+        .enter().append("g")
+        .attr("transform", function (d) { return "translate(" + XScale(d[col]) + "," + YScale(d[row]) + ")"; });
+        
+        var eRects = blockGroup.append("rect")
+        .attr("width", stateWidth).attr("height", stateWidth)
+        .style("fill", function (d){ return colorScale(d[like]); });
+        
+        var makeInteractive = eRects.on("mouseover", function(d) {		
+            div.transition()		
+                .duration(200)		
+                .style("opacity", .9);		
+            div.html("<strong>Match Ratio: </strong>" + d[like] + "<br/>" + 
+             "<strong>Decision Ratio: </strong>" + d[match])	
+                .style("left", (d3.event.pageX) + "px")		
+                .style("top", (d3.event.pageY - 28) + "px");	
+            })					
+        .on("mouseout", function(d) {		
+            div.transition()		
+                .duration(500)		
+                .style("opacity", 0);	
+        });
+          
+        var legend = svg.selectAll(".legend")
+              .data([3].concat(colorScale.quantiles()), function(d) { return d; });
+
+          legend.enter().append("g")
+              .attr("class", "legend");
+
+          legend.append("rect")
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", height)
+            .attr("width", legendElementWidth)
+            .attr("height", gridSize / 2)
+            .style("fill", function(d, i) { return colors[i]; });
+
+          legend.append("text")
+            .attr("class", "mono")
+            .text(function(d) { return "≥ " + Math.round(d) + "matches"; })
+            .attr("x", function(d, i) { return legendElementWidth * i; })
+            .attr("y", gridSize);
+
+          
+          
+          
+        
+      }
+        
+  
+        
+        
+      d3.csv("heatmap.csv", type, render)
+        
+      
+
+      function type(d){
+        d.cols = +d.cols;
+        d.rows  = +d.rows;
+        d.like = +d.like;
+        d.match  = +d.match;
+        d.col_pos  = +d.col_pos;  
+        d.order  = +d.order; 
+        return d;
+      }
+
+
+    
+
+    </script>
+  </body>
+    
+</frame>
+<h3>What's going on?</h3>
+</html>
+
+
+
+
+
+
